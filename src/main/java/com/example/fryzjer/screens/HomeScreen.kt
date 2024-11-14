@@ -1,5 +1,6 @@
-package com.example.fryzjer.ui
+package com.example.fryzjer.screens
 
+import android.util.Log
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -24,15 +25,20 @@ fun HomeScreen(
     val context = LocalContext.current
 
     // Pamiętanie stanu użytkownika
-    val userId = remember { mutableStateOf<String?>(null) }
+    var username = remember { mutableStateOf<String?>(null) }
 
     // Using LaunchedEffect to call suspend function safely within a Composable
     LaunchedEffect(Unit) {
-        // Fetch user session asynchronously
         val user = SupabaseClient.auth.retrieveUserForCurrentSession(updateSession = true)
 
-        // Sprawdzamy, czy użytkownik jest zalogowany
-        userId.value = user.id
+        // Access the "last_name" from the userMetadata map
+        val lastName = user.userMetadata?.get("first_name") ?: "Unknown" // If it's null, set it to "Unknown"
+
+        // Log the userMetadata for debugging purposes
+        Log.d("Informacje", user.userMetadata?.toString() ?: "No metadata")
+
+        // Update the username state with the last_name
+        username.value = lastName.toString().trim('"')
     }
 
     // Layout aplikacji
@@ -45,8 +51,8 @@ fun HomeScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Wyświetlenie ID użytkownika
-        Text(text = "User ID: ${userId.value}")
+        // Wyświetlenie last_name użytkownika
+        Text(text = "Hello ${username.value}")
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -63,4 +69,5 @@ fun HomeScreen(
         }
     }
 }
+
 

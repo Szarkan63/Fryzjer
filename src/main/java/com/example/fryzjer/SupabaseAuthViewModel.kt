@@ -11,6 +11,8 @@ import com.example.fryzjer.data.network.SupabaseClient
 import com.example.fryzjer.utils.SharedPreferenceHelper
 import kotlinx.coroutines.launch
 import io.github.jan.supabase.auth.providers.builtin.Email
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 
 
 class SupabaseAuthViewModel : ViewModel() {
@@ -47,20 +49,17 @@ class SupabaseAuthViewModel : ViewModel() {
                 val result = client.signUpWith(Email) {
                     email = userEmail
                     password = userPassword
+                    data = buildJsonObject {
+                        put("first_name", userFirstName)
+                        put("last_name", userLastName)
+                    }
                 }
 
-                // Check for errors in the result
                 if (result != null) {
                     _userState.value = UserState.Error("Error occurred during registration.")
                 } else {
                     saveToken(context)
                     _userState.value = UserState.Success("Registered user successfully!",isRegistration = true)
-                    val user = User(
-                        name = userFirstName,
-                        surname = userLastName,
-                        email = userEmail
-                    )
-                    supabase.from("users").insert(user)
                 }
             } catch (e: Exception) {
                 _userState.value = UserState.Error("Error: ${e.message}")
@@ -160,7 +159,7 @@ class SupabaseAuthViewModel : ViewModel() {
         val sharedPref = SharedPreferenceHelper(context)
         return sharedPref.getStringData("accessToken")
     }
-    
+
 }
 
 
