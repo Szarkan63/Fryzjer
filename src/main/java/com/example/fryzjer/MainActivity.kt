@@ -1,6 +1,5 @@
 package com.example.fryzjer
 
-import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -13,14 +12,17 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.example.fryzjer.data.model.UserState
-import com.example.fryzjer.ui.theme.FryzjerTheme
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.fryzjer.ui.HomeScreen
+import com.example.fryzjer.ui.RegisterScreen
+import com.example.fryzjer.data.model.UserState
+import com.example.fryzjer.ui.theme.FryzjerTheme
+import com.example.fryzjer.LoadingComponent
+import com.example.fryzjer.SupabaseAuthViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -40,6 +42,9 @@ class MainActivity : ComponentActivity() {
                         }
                         composable("home") {
                             HomeScreen(navController = navController)
+                        }
+                        composable("register") {
+                            RegisterScreen(navController = navController)
                         }
                     }
                 }
@@ -82,18 +87,22 @@ class MainActivity : ComponentActivity() {
             Spacer(modifier = Modifier.padding(8.dp))
             Button(
                 onClick = {
-                    viewModel.signUp(context, userEmail, userPassword)
-                }
-            ) {
-                Text("Sign Up")
-            }
-            Button(
-                onClick = {
                     viewModel.login(context, userEmail, userPassword)
                 }
             ) {
                 Text("Login")
             }
+
+            // Zaktualizowany przycisk "Sign Up"
+            Button(
+                onClick = {
+                    // Navigacja do ekranu rejestracji
+                    navController.navigate("register")
+                }
+            ) {
+                Text("Sign Up")
+            }
+
             Button(
                 colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
                 onClick = {
@@ -130,6 +139,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
+
 
 
 

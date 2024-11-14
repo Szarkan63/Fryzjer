@@ -5,6 +5,7 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.fryzjer.data.model.User
 import com.example.fryzjer.data.model.UserState
 import com.example.fryzjer.data.network.SupabaseClient
 import com.example.fryzjer.utils.SharedPreferenceHelper
@@ -17,6 +18,7 @@ class SupabaseAuthViewModel : ViewModel() {
     val userState: State<UserState> = _userState
 
     private val client=SupabaseClient.auth
+    private val supabase=SupabaseClient.supabase
 
     // Funkcja do walidacji emaila
     private fun isValidEmail(email: String): Boolean {
@@ -27,7 +29,9 @@ class SupabaseAuthViewModel : ViewModel() {
     fun signUp(
         context: Context,
         userEmail: String,
-        userPassword: String
+        userPassword: String,
+        userFirstName: String,
+        userLastName: String,
     ) {
         viewModelScope.launch {
             _userState.value = UserState.Loading
@@ -51,6 +55,12 @@ class SupabaseAuthViewModel : ViewModel() {
                 } else {
                     saveToken(context)
                     _userState.value = UserState.Success("Registered user successfully!",isRegistration = true)
+                    val user = User(
+                        name = userFirstName,
+                        surname = userLastName,
+                        email = userEmail
+                    )
+                    supabase.from("users").insert(user)
                 }
             } catch (e: Exception) {
                 _userState.value = UserState.Error("Error: ${e.message}")
@@ -150,6 +160,7 @@ class SupabaseAuthViewModel : ViewModel() {
         val sharedPref = SharedPreferenceHelper(context)
         return sharedPref.getStringData("accessToken")
     }
+    
 }
 
 

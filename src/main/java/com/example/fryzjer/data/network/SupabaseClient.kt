@@ -6,6 +6,7 @@ import io.github.jan.supabase.auth.FlowType
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
+import io.github.jan.supabase.postgrest.postgrest
 
 object SupabaseClient {
     val client = createSupabaseClient(
@@ -16,5 +17,6 @@ object SupabaseClient {
         install(Postgrest)
     }
     val auth=client.auth
+    val supabase=client.postgrest
 }
 
