@@ -1,5 +1,5 @@
 package com.example.fryzjer.ui
-
+import androidx.compose.ui.Alignment
 import android.content.Context
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -7,6 +7,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.fryzjer.data.model.UserState
@@ -37,7 +38,11 @@ fun RegisterScreen(
     }
 
     Column(
-        modifier = modifier.fillMaxSize().padding(8.dp)
+        modifier = modifier
+            .fillMaxSize()
+            .padding(8.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
         TextField(
             value = userEmail,
@@ -48,7 +53,8 @@ fun RegisterScreen(
         TextField(
             value = userPassword,
             onValueChange = { userPassword = it },
-            placeholder = { Text("Enter Password") }
+            placeholder = { Text("Enter Password") },
+            visualTransformation = PasswordVisualTransformation()
         )
         Spacer(modifier = Modifier.padding(8.dp))
         TextField(
@@ -67,29 +73,34 @@ fun RegisterScreen(
         Button(
             onClick = {
                 viewModel.signUp(context, userEmail, userPassword, userFirstName, userLastName)
-            }
+            },
+            modifier = Modifier.width(200.dp)
         ) {
             Text("Sign Up")
         }
 
+        Spacer(modifier = Modifier.padding(8.dp))
+
         Button(
             onClick = {
-                navController.popBackStack() // Navigate back to previous screen (MainScreen)
-            }
+                navController.popBackStack()
+            },
+            modifier = Modifier.width(200.dp)
         ) {
             Text("Back to Login")
         }
 
         when (userState) {
             is UserState.Loading -> {
-                LoadingComponent()
+                CircularProgressIndicator()
             }
             is UserState.Success -> {
                 val successState = userState as UserState.Success
                 currentUserState = successState.message
-                if (!successState.isRegistration) {
+                if (successState.isRegistration) {
+                    // Po pomyślnej rejestracji przekieruj na ekran logowania
                     LaunchedEffect(Unit) {
-                        navController.navigate("home") {
+                        navController.navigate("main") {
                             popUpTo("register") { inclusive = true }
                         }
                     }
@@ -102,8 +113,12 @@ fun RegisterScreen(
         }
 
         if (currentUserState.isNotEmpty()) {
+            Spacer(modifier = Modifier.padding(8.dp))
             Text(currentUserState)
         }
     }
 }
+
+
+
 

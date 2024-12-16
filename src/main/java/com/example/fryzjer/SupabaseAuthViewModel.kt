@@ -38,14 +38,12 @@ class SupabaseAuthViewModel : ViewModel() {
         viewModelScope.launch {
             _userState.value = UserState.Loading
 
-            // Sprawdzamy, czy email jest w poprawnym formacie
             if (!isValidEmail(userEmail)) {
                 _userState.value = UserState.Error("Invalid email format.")
                 return@launch
             }
 
             try {
-                // Using the correct signUp method
                 val result = client.signUpWith(Email) {
                     email = userEmail
                     password = userPassword
@@ -59,7 +57,8 @@ class SupabaseAuthViewModel : ViewModel() {
                     _userState.value = UserState.Error("Error occurred during registration.")
                 } else {
                     saveToken(context)
-                    _userState.value = UserState.Success("Registered user successfully!",isRegistration = true)
+                    // Przekazujemy flagę `isRegistration = true`, aby wyzwolić nawigację w MainScreen
+                    _userState.value = UserState.Success("Registered user successfully!", isRegistration = true)
                 }
             } catch (e: Exception) {
                 _userState.value = UserState.Error("Error: ${e.message}")
