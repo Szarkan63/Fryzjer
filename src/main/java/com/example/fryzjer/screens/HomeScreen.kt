@@ -159,7 +159,9 @@ fun DrawerContent(
             )
         },
         selected = false,
-        onClick = {/* TODO: Handle navigation for this item */}
+        onClick = {
+            navController.navigate("Reservations")
+        }
     )
 
     Spacer(modifier=Modifier.height(8.dp))

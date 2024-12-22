@@ -21,7 +21,6 @@ class SupabaseAuthViewModel : ViewModel() {
 
     private val client=SupabaseClient.auth
     private val supabase=SupabaseClient.supabase
-
     // Funkcja do walidacji emaila
     private fun isValidEmail(email: String): Boolean {
         val emailRegex = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$"

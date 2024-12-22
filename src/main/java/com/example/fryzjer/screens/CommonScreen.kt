@@ -64,7 +64,7 @@ fun CommonScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = title,
+                        text = "",
                         style = MaterialTheme.typography.headlineMedium,
                         fontSize = 24.sp
                     )
