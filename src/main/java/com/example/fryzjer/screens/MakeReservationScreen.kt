@@ -104,7 +104,7 @@ fun MakeReservationScreen(
                         try {
                             val user = SupabaseClient.auth.retrieveUserForCurrentSession(updateSession = true)
                             val userId = user.id
-                            val isAccepted = false
+                            val isAccepted = null
 
                             // Generate a unique reservation ID
                             val reservationId = UUID.randomUUID().toString()

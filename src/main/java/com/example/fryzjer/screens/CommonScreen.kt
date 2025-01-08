@@ -1,16 +1,20 @@
 package com.example.fryzjer.screens
 
+import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.example.fryzjer.data.model.UserViewModel
+import com.example.fryzjer.data.network.SupabaseClient
 import kotlinx.coroutines.launch
 
 
@@ -19,16 +23,21 @@ fun CommonScreen(
     navController: NavController,
     title: String,
     bodyText: String,
-    logoutAction: () -> Unit,
+    logoutAction: (() -> Unit)? = null,
     content: @Composable (PaddingValues) -> Unit
 ) {
-    val context = LocalContext.current
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+    val userViewModel: UserViewModel = viewModel()
+
+    LaunchedEffect(Unit) {
+        val user = SupabaseClient.auth.retrieveUserForCurrentSession(updateSession = true)
+        userViewModel.setUserId(user.id)
+    }
 
     BackHandler(enabled = drawerState.isOpen) {
         scope.launch {
-            drawerState.close() // Zamknij szufladę, jeśli jest otwarta
+            drawerState.close()
         }
     }
 
@@ -36,7 +45,7 @@ fun CommonScreen(
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet {
-                DrawerContent(navController = navController)
+                DrawerContent(navController = navController, userId = userViewModel.userId.value) // Przekazujemy userId
             }
         }
     ) {
@@ -76,19 +85,20 @@ fun CommonScreen(
                     )
                 }
 
-                // Dynamiczny przycisk logout
-                Button(
-                    onClick = {
-                        logoutAction()
-                        navController.navigate("main") {
-                            popUpTo("home") { inclusive = true }
-                        }
-                    },
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(bottom = 50.dp)
-                ) {
-                    Text("Logout")
+                logoutAction?.let {
+                    Button(
+                        onClick = {
+                            it()
+                            navController.navigate("main") {
+                                popUpTo("home") { inclusive = true }
+                            }
+                        },
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(bottom = 50.dp)
+                    ) {
+                        Text("Logout")
+                    }
                 }
 
                 content(padding)
@@ -96,3 +106,6 @@ fun CommonScreen(
         }
     }
 }
+
+
+

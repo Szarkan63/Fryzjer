@@ -22,6 +22,7 @@ android {
     val key: String = localProperties.getProperty("supabaseKey") ?: ""
     val url: String = localProperties.getProperty("supabaseUrl") ?: ""
 
+
     defaultConfig {
         applicationId = "com.example.fryzjer"
         minSdk = 24

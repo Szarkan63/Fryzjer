@@ -10,11 +10,7 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.rounded.AccountCircle
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -26,6 +22,8 @@ import com.example.fryzjer.SupabaseAuthViewModel
 import com.example.fryzjer.data.network.SupabaseClient
 import kotlinx.coroutines.launch
 
+val adminId = "0b94d3b8-2509-4a95-934f-2434f075791b" // Replace with your actual admin user ID
+
 @Composable
 fun HomeScreen(
     viewModel: SupabaseAuthViewModel = viewModel(),
@@ -33,19 +31,22 @@ fun HomeScreen(
 ) {
     val context = LocalContext.current
     var username = remember { mutableStateOf<String?>(null) }
+    var userId = remember { mutableStateOf<String?>(null) } // Store user ID
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
     BackHandler(enabled = drawerState.isOpen) {
         scope.launch {
-            drawerState.close() // Zamknięcie szuflady, gdy jest otwarta
+            drawerState.close()
+            Log.d("Drawer", "Drawer closed")
         }
     }
 
     LaunchedEffect(Unit) {
         val user = SupabaseClient.auth.retrieveUserForCurrentSession(updateSession = true)
         val firstName = user.userMetadata?.get("first_name") ?: "Unknown"
-        Log.d("Informacje", user.userMetadata?.toString() ?: "No metadata")
+        userId.value = user.id // Store the user ID for comparison
+        Log.d("HomeScreen", "User ID: ${user.id}, First Name: $firstName")
         username.value = firstName.toString().trim('"')
     }
 
@@ -53,15 +54,17 @@ fun HomeScreen(
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet {
-                // Przekazujemy navController do DrawerContent
-                DrawerContent(navController = navController)
+                DrawerContent(
+                    navController = navController,
+                    userId = userId.value // Pass userId here
+                )
             }
         }
     ) {
         Scaffold(
             topBar = {
                 TopBar(
-                    title="Strona główna",
+                    title = "Strona główna",
                     onOpenDrawer = {
                         scope.launch {
                             drawerState.apply {
@@ -114,47 +117,53 @@ fun HomeScreen(
 
 @Composable
 fun DrawerContent(
-    navController: NavController, // Dodaj navController jako parametr
+    navController: NavController,
+    userId: String?,  // Receive userId from ViewModel
     modifier: Modifier = Modifier
 ) {
+    val isAdmin = userId == adminId // Check if the user is an admin
+
+    // Log the current userId and adminId
+    Log.d("DrawerContent", "User ID: $userId, Admin ID: $adminId, Is Admin: $isAdmin")
+
     Text(
         text = "Menu",
-        fontSize=24.sp,
+        fontSize = 24.sp,
         modifier = modifier.padding(16.dp)
     )
     HorizontalDivider()
     NavigationDrawerItem(
-        icon={
+        icon = {
             Icon(
                 imageVector = Icons.Rounded.Home,
                 contentDescription = "Strona główna",
             )
         },
-        label={
+        label = {
             Text(
                 text = "Strona główna",
-                fontSize=17.sp,
+                fontSize = 17.sp,
                 modifier = modifier.padding(16.dp)
             )
         },
         selected = false,
         onClick = {
-            // Nawigacja do ekranu MakeReservationScreen
             navController.navigate("home")
         }
     )
-    Spacer(modifier=Modifier.height(8.dp))
+    Spacer(modifier = Modifier.height(8.dp))
+
     NavigationDrawerItem(
-        icon={
+        icon = {
             Icon(
                 imageVector = Icons.Rounded.AccountCircle,
                 contentDescription = "Rezerwacje",
             )
         },
-        label={
+        label = {
             Text(
                 text = "Twoje rezerwacje",
-                fontSize=17.sp,
+                fontSize = 17.sp,
                 modifier = modifier.padding(16.dp)
             )
         },
@@ -164,30 +173,53 @@ fun DrawerContent(
         }
     )
 
-    Spacer(modifier=Modifier.height(8.dp))
+    Spacer(modifier = Modifier.height(8.dp))
 
-    // Zmiana: Przenosimy użytkownika na ekran MakeReservationScreen
     NavigationDrawerItem(
-        icon={
+        icon = {
             Icon(
                 imageVector = Icons.Rounded.AccountCircle,
                 contentDescription = "Zloz rezerwacje",
             )
         },
-        label={
+        label = {
             Text(
                 text = "Zloz rezerwacje",
-                fontSize=17.sp,
+                fontSize = 17.sp,
                 modifier = modifier.padding(16.dp)
             )
         },
         selected = false,
         onClick = {
-            // Nawigacja do ekranu MakeReservationScreen
             navController.navigate("makeReservation")
         }
     )
+
+    // Show Admin Panel only if the user is an admin
+    if (isAdmin) {
+        Spacer(modifier = Modifier.height(8.dp))
+        NavigationDrawerItem(
+            icon = {
+                Icon(
+                    imageVector = Icons.Rounded.AccountCircle,
+                    contentDescription = "Admin Panel",
+                )
+            },
+            label = {
+                Text(
+                    text = "Admin Panel",
+                    fontSize = 17.sp,
+                    modifier = modifier.padding(16.dp)
+                )
+            },
+            selected = false,
+            onClick = {
+                navController.navigate("adminPanel")
+            }
+        )
+    }
 }
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -223,6 +255,8 @@ fun TopBar(
         }
     )
 }
+
+
 
 
 

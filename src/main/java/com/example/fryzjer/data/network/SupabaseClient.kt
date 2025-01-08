@@ -18,5 +18,7 @@ object SupabaseClient {
     }
     val auth=client.auth
     val supabase=client.postgrest
+
+
 }
 

@@ -1,105 +1,77 @@
 package com.example.fryzjer.screens
 
 import android.util.Log
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavController
-import com.example.fryzjer.SupabaseAuthViewModel
-import androidx.compose.runtime.*
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.navigation.NavController
 import com.example.fryzjer.data.model.ReservationInput
 import com.example.fryzjer.data.model.ReservationRepository
-import com.example.fryzjer.data.network.SupabaseClient
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.decodeFromString
 
 @Composable
-fun ReservationsScreen(
-    navController: NavController,
-    viewModel: SupabaseAuthViewModel = viewModel()
+fun AdminPanelScreen(
+    navController: NavController
 ) {
-    val context = LocalContext.current
-
-    // State to hold reservations data
     var reservations by remember { mutableStateOf<List<ReservationInput>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
-    var error by remember { mutableStateOf<String?>(null) }  // Make sure error is mutable
+    var error by remember { mutableStateOf<String?>(null) }
 
-    // Fetch reservations when screen is first displayed or when user changes
-    LaunchedEffect(Unit) { // LaunchedEffect is already a coroutine scope
+    // Fetch reservations when the screen loads
+    LaunchedEffect(Unit) {
         try {
-            Log.d("ReservationsScreen", "Starting to fetch reservations...")
-
-            // Make the suspend function call to fetch the reservations
-            val user = SupabaseClient.auth.retrieveUserForCurrentSession(updateSession = true)
-            Log.d("ReservationsScreen", "User retrieved: ${user.id}")
-
-            val result = ReservationRepository.getReservationsByUserId(user.id)
-            Log.d("ReservationsScreen", "Fetch result: $result")
-
-            // Log the result to see the raw data structure
-            Log.d("ReservationsScreen", "Raw result data: ${result.data}")
-
-            // Try to decode the data properly based on its structure
-            // If the result is a JSON string, you can parse it into the desired type
+            Log.d("AdminPanelScreen", "Starting to fetch reservations...")
+            val result = ReservationRepository.getAllReservations()
             if (result != null && result.data != null) {
-                // If the data is a JSON string, parse it
-                try {
-                    reservations = Json.decodeFromString<List<ReservationInput>>(result.data as String)
-                    Log.d("ReservationsScreen", "Reservations data fetched: ${reservations.size} items")
-                } catch (e: Exception) {
-                    error = "Error parsing reservations data: ${e.message}"
-                    Log.e("ReservationsScreen", "Error parsing reservations", e)
-                }
+                reservations = Json.decodeFromString(result.data as String)
+                Log.d("AdminPanelScreen", "Fetched ${reservations.size} reservations")
             } else {
-                // Handle the case where result is null or data is null
                 error = "Failed to load reservations: No data available"
-                Log.e("ReservationsScreen", error ?: "Unknown error")
             }
         } catch (e: Exception) {
-            // Catch any exceptions and show an error message
             error = e.message ?: "An error occurred"
-            Log.e("ReservationsScreen", "Error fetching reservations", e)
+            Log.e("AdminPanelScreen", "Error fetching reservations", e)
         } finally {
-            // Ensure loading state is updated after the data fetch
             loading = false
-            Log.d("ReservationsScreen", "Loading state updated to false.")
         }
     }
 
-    // Display the common screen with the reservations content
     CommonScreen(
         navController = navController,
-        title = "Rezerwacje",
+        title = "Admin Panel",
         bodyText = "",
-        logoutAction = null,
         content = { paddingValues ->
-            ReservationsContent(
+            AdminPanelContent(
                 paddingValues = paddingValues,
                 reservations = reservations,
                 loading = loading,
-                error = error // Pass the error state to the ReservationsContent composable
+                error = error
             )
         }
     )
 }
 
 @Composable
-fun ReservationsContent(
+fun AdminPanelContent(
     paddingValues: PaddingValues,
     reservations: List<ReservationInput>,
     loading: Boolean,
     error: String?
 ) {
+    var selectedReservation by remember { mutableStateOf<ReservationInput?>(null) }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -108,7 +80,7 @@ fun ReservationsContent(
         verticalArrangement = Arrangement.Top
     ) {
         Text(
-            text = "Twoje rezerwacje",
+            text = "Admin Panel - Reservations",
             style = MaterialTheme.typography.headlineMedium,
             fontSize = 24.sp,
             modifier = Modifier.padding(16.dp)
@@ -124,7 +96,7 @@ fun ReservationsContent(
             )
         } else if (reservations.isEmpty()) {
             Text(
-                text = "Nie masz żadnych rezerwacji",
+                text = "No reservations found.",
                 modifier = Modifier.padding(16.dp)
             )
         } else {
@@ -142,19 +114,19 @@ fun ReservationsContent(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = "Data",
+                            text = "Date",
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.weight(1f)
                         )
                         Text(
-                            text = "Czas",
+                            text = "Time",
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.weight(1f)
                         )
                         Text(
-                            text = "Opis usługi",
+                            text = "Description",
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.weight(2f)
@@ -172,7 +144,8 @@ fun ReservationsContent(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 4.dp),
+                            .padding(vertical = 4.dp)
+                            .clickable { selectedReservation = reservation },
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
@@ -191,38 +164,33 @@ fun ReservationsContent(
                             modifier = Modifier.weight(2f)
                         )
                         if (reservation.is_accepted == true) {
-                            Text(
-                                text = "\u2713",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.primary,
-                                fontSize = 20.sp,
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = "Accepted",
+                                tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.weight(1f)
                             )
                         } else if (reservation.is_accepted == false) {
-                            Text(
-                                text = "\u2717",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.error,
-                                fontSize = 20.sp, // Increase font size
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Rejected",
+                                tint = MaterialTheme.colorScheme.error,
                                 modifier = Modifier.weight(1f)
                             )
                         } else {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .wrapContentSize() // Użycie wrapContentSize, aby zawartość nie rozciągała się na całą szerokość
+                                modifier = Modifier.weight(1f)
                             ) {
                                 CircularProgressIndicator(
                                     modifier = Modifier
                                         .size(16.dp)
-                                        .padding(end = 4.dp), // Dodanie odstępu między ikoną a tekstem
+                                        .padding(end = 4.dp),
                                     strokeWidth = 2.dp
                                 )
                                 Text(
-                                    text = "Oczekuje",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    modifier = Modifier.align(Alignment.CenterVertically)
+                                    text = "Pending",
+                                    style = MaterialTheme.typography.bodyMedium
                                 )
                             }
                         }
@@ -230,11 +198,68 @@ fun ReservationsContent(
                 }
             }
         }
+
+        if (selectedReservation != null) {
+            AdminDecisionDialog(
+                reservation = selectedReservation!!,
+                onClose = { selectedReservation = null },
+                onUpdate = { reservationId, isAccepted ->
+                    try {
+                        ReservationRepository.updateReservationStatus(
+                            reservationId = reservationId,
+                            isAccepted = isAccepted
+                        )
+                    } catch (e: Exception) {
+                        Log.e("AdminPanelScreen", "Error updating reservation: $e")
+                    }
+                }
+            )
+        }
     }
 }
 
+@Composable
+fun AdminDecisionDialog(
+    reservation: ReservationInput,
+    onClose: () -> Unit,
+    onUpdate: suspend (String, Boolean) -> Unit
+) {
+    val coroutineScope = rememberCoroutineScope() // Get a coroutine scope for handling suspend functions
 
-
+    AlertDialog(
+        onDismissRequest = onClose,
+        title = {
+            Text(text = "Update Reservation Status")
+        },
+        text = {
+            Text("Would you like to accept or reject this reservation?")
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    coroutineScope.launch {
+                        onUpdate(reservation.reservation_id, true) // Accept reservation
+                        onClose() // Close dialog after update
+                    }
+                }
+            ) {
+                Text("Accept")
+            }
+        },
+        dismissButton = {
+            Button(
+                onClick = {
+                    coroutineScope.launch {
+                        onUpdate(reservation.reservation_id, false) // Reject reservation
+                        onClose() // Close dialog after update
+                    }
+                }
+            ) {
+                Text("Reject")
+            }
+        }
+    )
+}
 
 
 
