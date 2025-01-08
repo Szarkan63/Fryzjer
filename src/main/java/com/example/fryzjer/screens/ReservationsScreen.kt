@@ -4,6 +4,9 @@ import android.util.Log
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
@@ -31,46 +34,45 @@ fun ReservationsScreen(
 
     // State to hold reservations data
     var reservations by remember { mutableStateOf<List<ReservationInput>>(emptyList()) }
+    var reasons by remember { mutableStateOf<Map<String, String?>>(emptyMap()) } // Hold reasons by reservation ID
     var loading by remember { mutableStateOf(true) }
-    var error by remember { mutableStateOf<String?>(null) }  // Make sure error is mutable
+    var error by remember { mutableStateOf<String?>(null) }
 
     // Fetch reservations when screen is first displayed or when user changes
-    LaunchedEffect(Unit) { // LaunchedEffect is already a coroutine scope
+    LaunchedEffect(Unit) {
         try {
             Log.d("ReservationsScreen", "Starting to fetch reservations...")
 
-            // Make the suspend function call to fetch the reservations
             val user = SupabaseClient.auth.retrieveUserForCurrentSession(updateSession = true)
             Log.d("ReservationsScreen", "User retrieved: ${user.id}")
 
             val result = ReservationRepository.getReservationsByUserId(user.id)
             Log.d("ReservationsScreen", "Fetch result: $result")
 
-            // Log the result to see the raw data structure
-            Log.d("ReservationsScreen", "Raw result data: ${result.data}")
-
-            // Try to decode the data properly based on its structure
-            // If the result is a JSON string, you can parse it into the desired type
             if (result != null && result.data != null) {
-                // If the data is a JSON string, parse it
                 try {
-                    reservations = Json.decodeFromString<List<ReservationInput>>(result.data as String)
+                    reservations = Json.decodeFromString(result.data as String)
                     Log.d("ReservationsScreen", "Reservations data fetched: ${reservations.size} items")
+
+                    // Fetch reasons for each reservation
+                    val reasonsMap = mutableMapOf<String, String?>()
+                    reservations.forEach { reservation ->
+                        val reason = ReservationRepository.getReasonForReservation(reservation.reservation_id)
+                        reasonsMap[reservation.reservation_id] = reason
+                    }
+                    reasons = reasonsMap
                 } catch (e: Exception) {
                     error = "Error parsing reservations data: ${e.message}"
                     Log.e("ReservationsScreen", "Error parsing reservations", e)
                 }
             } else {
-                // Handle the case where result is null or data is null
                 error = "Failed to load reservations: No data available"
                 Log.e("ReservationsScreen", error ?: "Unknown error")
             }
         } catch (e: Exception) {
-            // Catch any exceptions and show an error message
             error = e.message ?: "An error occurred"
             Log.e("ReservationsScreen", "Error fetching reservations", e)
         } finally {
-            // Ensure loading state is updated after the data fetch
             loading = false
             Log.d("ReservationsScreen", "Loading state updated to false.")
         }
@@ -86,8 +88,9 @@ fun ReservationsScreen(
             ReservationsContent(
                 paddingValues = paddingValues,
                 reservations = reservations,
+                reasons = reasons,
                 loading = loading,
-                error = error // Pass the error state to the ReservationsContent composable
+                error = error
             )
         }
     )
@@ -97,6 +100,7 @@ fun ReservationsScreen(
 fun ReservationsContent(
     paddingValues: PaddingValues,
     reservations: List<ReservationInput>,
+    reasons: Map<String, String?>,
     loading: Boolean,
     error: String?
 ) {
@@ -128,103 +132,115 @@ fun ReservationsContent(
                 modifier = Modifier.padding(16.dp)
             )
         } else {
+            // Add headers for the table
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "Date",
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    text = "Time",
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    text = "Description",
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(2f)
+                )
+                Text(
+                    text = "Status",
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                item {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = "Data",
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.weight(1f)
-                        )
-                        Text(
-                            text = "Czas",
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.weight(1f)
-                        )
-                        Text(
-                            text = "Opis usługi",
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.weight(2f)
-                        )
-                        Text(
-                            text = "Status",
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                }
-
                 items(reservations) { reservation ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = reservation.date,
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.weight(1f)
-                        )
-                        Text(
-                            text = reservation.time ?: "Unknown",
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.weight(1f)
-                        )
-                        Text(
-                            text = reservation.description ?: "No description",
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.weight(2f)
-                        )
-                        if (reservation.is_accepted == true) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
                             Text(
-                                text = "\u2713",
+                                text = reservation.date,
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.primary,
-                                fontSize = 20.sp,
                                 modifier = Modifier.weight(1f)
                             )
-                        } else if (reservation.is_accepted == false) {
                             Text(
-                                text = "\u2717",
+                                text = reservation.time ?: "Unknown",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.error,
-                                fontSize = 20.sp, // Increase font size
                                 modifier = Modifier.weight(1f)
                             )
-                        } else {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .wrapContentSize() // Użycie wrapContentSize, aby zawartość nie rozciągała się na całą szerokość
-                            ) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier
-                                        .size(16.dp)
-                                        .padding(end = 4.dp), // Dodanie odstępu między ikoną a tekstem
-                                    strokeWidth = 2.dp
-                                )
-                                Text(
-                                    text = "Oczekuje",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    modifier = Modifier.align(Alignment.CenterVertically)
-                                )
+                            Text(
+                                text = reservation.description ?: "No description",
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.weight(2f)
+                            )
+                            // Replace the status text with appropriate icons
+                            when (reservation.is_accepted) {
+                                true -> {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = "Accepted",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                                false -> {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Rejected",
+                                        tint = MaterialTheme.colorScheme.error,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                                else -> {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier
+                                                .size(16.dp)
+                                                .padding(end = 4.dp),
+                                            strokeWidth = 2.dp
+                                        )
+                                        Text(
+                                            text = "Pending",
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
+                                    }
+                                }
                             }
+                        }
+
+                        // Display the reason below the reservation details
+                        val reason = reasons[reservation.reservation_id]
+                        if (!reason.isNullOrEmpty()) {
+                            Text(
+                                text = "Powód odrzucenia: $reason,prosimy złożyć rezerwacje ponownie.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.padding(top = 4.dp)
+                            )
                         }
                     }
                 }
@@ -232,6 +248,9 @@ fun ReservationsContent(
         }
     }
 }
+
+
+
 
 
 

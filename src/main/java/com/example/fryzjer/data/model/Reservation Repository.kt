@@ -15,6 +15,18 @@ data class ReservationInput(
     val time: String?,
     val is_accepted: Boolean?,
     val user_id: String,
+    val reason: String? = null // Add this to match the JSON structure
+)
+
+@Serializable
+data class ReservationUpdate(
+    val is_accepted: Boolean,
+    val reason: String? = null
+)
+
+@Serializable
+data class ReasonOnly(
+    val reason: String? = null
 )
 
 
@@ -57,24 +69,42 @@ object ReservationRepository {
 
     suspend fun updateReservationStatus(
         reservationId: String,
-        isAccepted: Boolean
+        isAccepted: Boolean,
+        reason: String? = null
     ) {
         try {
+            // Create an instance of ReservationUpdate
+            val updateData = ReservationUpdate(is_accepted = isAccepted, reason = reason)
+
+            // Update reservation in Supabase
             SupabaseClient.supabase
                 .from("Reservations")
-                .update(
-                    {
-                        set("is_accepted", isAccepted)
-                    }
-                ) {
+                .update(updateData) {
                     filter {
                         eq("reservation_id", reservationId)
                     }
                 }
+
             Log.d("ReservationRepository", "Successfully updated reservation $reservationId")
         } catch (e: Exception) {
             Log.e("ReservationRepository", "Error updating reservation $reservationId", e)
             throw e
+        }
+    }
+    suspend fun getReasonForReservation(reservationId: String): String? {
+        return try {
+            val result = SupabaseClient.supabase
+                .from("Reservations")
+                .select(columns = Columns.list("reason")) {
+                    filter {
+                        eq("reservation_id", reservationId)
+                    }
+                }.decodeSingle<ReasonOnly>() // Use the ReasonOnly class here
+
+            result.reason
+        } catch (e: Exception) {
+            Log.e("ReservationRepository", "Error fetching reason for reservation $reservationId", e)
+            null
         }
     }
 }

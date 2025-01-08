@@ -203,17 +203,19 @@ fun AdminPanelContent(
             AdminDecisionDialog(
                 reservation = selectedReservation!!,
                 onClose = { selectedReservation = null },
-                onUpdate = { reservationId, isAccepted ->
+                onUpdate = { reservationId, isAccepted, reason ->
                     try {
                         ReservationRepository.updateReservationStatus(
                             reservationId = reservationId,
-                            isAccepted = isAccepted
+                            isAccepted = isAccepted,
+                            reason = reason
                         )
                     } catch (e: Exception) {
                         Log.e("AdminPanelScreen", "Error updating reservation: $e")
                     }
                 }
             )
+
         }
     }
 }
@@ -222,9 +224,11 @@ fun AdminPanelContent(
 fun AdminDecisionDialog(
     reservation: ReservationInput,
     onClose: () -> Unit,
-    onUpdate: suspend (String, Boolean) -> Unit
+    onUpdate: suspend (String, Boolean, String?) -> Unit
 ) {
+    var rejectionReason by remember { mutableStateOf("") }
     val coroutineScope = rememberCoroutineScope() // Get a coroutine scope for handling suspend functions
+    var showReasonField by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onClose,
@@ -232,30 +236,53 @@ fun AdminDecisionDialog(
             Text(text = "Update Reservation Status")
         },
         text = {
-            Text("Would you like to accept or reject this reservation?")
+            Column {
+                Text("Would you like to accept or reject this reservation?")
+                if (showReasonField) {
+                    OutlinedTextField(
+                        value = rejectionReason,
+                        onValueChange = { rejectionReason = it },
+                        label = { Text("Reason for rejection") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
         },
         confirmButton = {
             Button(
                 onClick = {
                     coroutineScope.launch {
-                        onUpdate(reservation.reservation_id, true) // Accept reservation
-                        onClose() // Close dialog after update
+                        if (showReasonField && rejectionReason.isNotBlank()) {
+                            onUpdate(reservation.reservation_id, false, rejectionReason)
+                            onClose()
+                        } else if (!showReasonField) {
+                            onUpdate(reservation.reservation_id, true, null)
+                            onClose()
+                        }
                     }
-                }
+                },
+                enabled = !showReasonField || rejectionReason.isNotBlank()
             ) {
-                Text("Accept")
+                Text(if (showReasonField) "Submit" else "Accept")
             }
         },
         dismissButton = {
             Button(
                 onClick = {
-                    coroutineScope.launch {
-                        onUpdate(reservation.reservation_id, false) // Reject reservation
-                        onClose() // Close dialog after update
+                    if (!showReasonField) {
+                        showReasonField = true
+                    } else {
+                        coroutineScope.launch {
+                            if (rejectionReason.isNotBlank()) {
+                                onUpdate(reservation.reservation_id, false, rejectionReason)
+                                onClose()
+                            }
+                        }
                     }
-                }
+                },
+                enabled = !showReasonField || rejectionReason.isNotBlank()
             ) {
-                Text("Reject")
+                Text(if (showReasonField) "Reject" else "Reject with Reason")
             }
         }
     )
